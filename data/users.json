@@ -1,0 +1,9 @@
+[
+  {
+    "id": 1,
+    "username": "admin",
+    "passwordHash": "pbkdf2$600000$01a42dc664e81d203fec8b2d3d290f5b$e7d3b862e6f66c6520f22387e08765f0db2ab703e5be6f2938456d03573841eec499fea99c2214e59f995de4207a0d47f1ab44d8d14be6f93fb71ab258a4465f",
+    "role": "admin",
+    "mustChangePassword": true
+  }
+]
