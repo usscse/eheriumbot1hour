@@ -413,7 +413,7 @@ function rptPopulateDropdowns(){
   makePills(st, 'r_status_pills', 'rs', 'rptLiveCount()');
   const projects=[...new Set(db.map(r=>r.project).filter(Boolean))].sort();
   const pp=document.getElementById('r_project_pills');
-  if(pp) pp.innerHTML=projects.map(p=>'<label class="filter-pill" style="margin-right:6px;margin-bottom:4px"><input type="checkbox" value="'+p+'" onchange="rptLiveCount()"> '+p+'</label>').join('')||(('<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">No projects in database</span>'));
+  if(pp) pp.innerHTML=projects.map(p=>'<label class="filter-pill" style="margin-right:6px;margin-bottom:4px"><input type="checkbox" value="'+escapeHtml(p)+'" onchange="rptLiveCount()"> '+escapeHtml(p)+'</label>').join('')||(('<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">No projects in database</span>'));
   updateActiveFiltersLabel();
 }
 
