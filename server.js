@@ -19,6 +19,7 @@ if (!fs.existsSync(USERS_FILE)) {
 }
 
 const sessions = new Map(); // token -> {id, username, role, createdAt}
+const loginInProgress = new Set(); // lowercase username
 const sseClients = new Set();
 const locks = new Map(); // recordId -> { userId, username, expiresAt }
 const LOCK_TTL_MS = 30 * 60 * 1000;
@@ -204,6 +205,12 @@ function route(req, res) {
       .then(body => {
         const username = String(body.username || '').trim();
         const password = String(body.password || '');
+        const usernameKey = username.toLowerCase();
+        if (loginInProgress.has(usernameKey)) {
+          return sendJSON(res, 409, { error: 'User already logged in on another device. Please logout from the other device first.' });
+        }
+        loginInProgress.add(usernameKey);
+        try {
         const users = readJSON(USERS_FILE, []);
         const found = users.find(u => u.username === username);
         if (!found || !verifyPassword(found.passwordHash, password)) {
@@ -221,6 +228,9 @@ function route(req, res) {
         addLog({ action: 'login', by: found.username, userId: found.id });
         broadcastSSE('online', { online: listOnlineDeduped() });
         return sendJSON(res, 200, { ok: true, token, user: session, mustChangePassword: !!found.mustChangePassword });
+        } finally {
+          loginInProgress.delete(usernameKey);
+        }
       })
       .catch(err => sendJSON(res, 400, { error: err.message }));
   }
