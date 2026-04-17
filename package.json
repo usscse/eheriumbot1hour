@@ -1,0 +1,12 @@
+{
+  "name": "tsr-data-manager-server",
+  "version": "1.0.0",
+  "description": "TSR Data Manager — Local Network Server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=14"
+  }
+}
