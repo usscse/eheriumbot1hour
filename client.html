@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TSR Data Manager v1.0 Final</title>
+  <style>
+    :root{--bg:#f8f9fb;--card:#fff;--ink:#1f2d3d;--muted:#5f6b7a;--pri:#2c7be5;--ok:#239b56;--warn:#d68910;--danger:#c0392b;--line:#d9e1ec}
+    *{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    .wrap{max-width:1280px;margin:0 auto;padding:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}.col{flex:1 1 220px}label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+    input,select,textarea,button{font:inherit}input,select,textarea{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff}
+    button{border:1px solid transparent;border-radius:8px;padding:8px 12px;cursor:pointer}
+    .btn{background:#eef3fb;border-color:#d5e1f3}.b-primary{background:var(--pri);color:#fff}.b-success{background:var(--ok);color:#fff}.b-warning{background:var(--warn);color:#fff}.b-danger{background:var(--danger);color:#fff}
+    .hidden{display:none !important}.muted{color:var(--muted)}.tiny{font-size:12px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:10px}.brand{font-size:20px;font-weight:700}.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:#fff}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}.tab-btn{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:#fff}.tab-btn.active{background:var(--pri);border-color:var(--pri);color:#fff}
+    .mode-group{display:flex;gap:6px;flex-wrap:wrap}
+    table{width:100%;border-collapse:collapse;background:#fff}th,td{border:1px solid var(--line);padding:7px;vertical-align:top}th{background:#f2f6fd;text-align:left}
+    tbody tr.pending { background: rgba(192, 57, 43, 0.08) !important; }
+    tbody tr.pending:hover { background: rgba(192, 57, 43, 0.14) !important; }
+    .filter-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);padding:5px 8px;border-radius:999px;background:#fff;margin:2px;cursor:pointer;font-size:13px}
+    .filter-pill input{width:auto}.login{max-width:420px;margin:60px auto}.login-title{font-size:28px;margin:0 0 6px}.login-sub{margin:0 0 14px;color:var(--muted)}
+    #toast{position:fixed;right:14px;bottom:14px;background:#1f2d3d;color:#fff;padding:10px 12px;border-radius:8px;display:none;z-index:9999}
+    .project-block{margin-top:12px}
+  </style>
+</head>
+<body>
+<div id="toast"></div>
+
+<section id="loginScreen" class="login card">
+  <h1 class="login-title">TSR Data Manager</h1>
+  <p class="login-sub">TSR MANAGEMENT SYSTEM · v1.0 Final</p>
+  <div class="row">
+    <div class="col" style="flex-basis:100%"><label>Username</label><input id="login-user" autocomplete="username"></div>
+    <div class="col" style="flex-basis:100%"><label>Password</label><input id="login-pass" type="password" autocomplete="current-password"></div>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button class="btn b-primary" onclick="doLogin()">Login</button>
+    <span id="login-err" class="muted"></span>
+  </div>
+</section>
+
+<section id="app" class="wrap hidden">
+  <div class="card top">
+    <div>
+      <div class="brand">TSR Data Manager <span class="muted tiny">v1.0 Final</span></div>
+      <div id="welcome" class="muted tiny"></div>
+    </div>
+    <div class="row" style="align-items:center">
+      <span class="chip">Online Users: <b id="onlineCount">0</b></span>
+      <button class="btn" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="card tabs">
+    <button id="tab-entry" class="tab-btn active" onclick="openTab('entry')">Data Entry</button>
+    <button id="tab-view" class="tab-btn" onclick="openTab('view')">View/Search</button>
+    <button id="tab-edit" class="tab-btn" onclick="openTab('edit')">Edit Records</button>
+    <button id="tab-reports" class="tab-btn" onclick="openTab('reports')">Reports</button>
+    <button id="tab-admin" class="tab-btn" onclick="openTab('admin')">User Admin</button>
+  </div>
+
+  <section id="page-entry" class="card">
+    <h3>Add TSR Record</h3>
+    <div class="row">
+      <div class="col"><label>Project</label><input id="f_project"></div>
+      <div class="col"><label>Item Name</label><input id="f_item_name"></div>
+      <div class="col"><label>Agency</label><input id="f_agency"></div>
+      <div class="col"><label>Category</label><input id="f_item_category"></div>
+      <div class="col"><label>Status</label><input id="f_status"></div>
+      <div class="col"><label>Qty</label><input id="f_qty" type="number" step="any"></div>
+      <div class="col"><label>Qty Accepted</label><input id="f_qty_accepted" type="number" step="any"></div>
+      <div class="col"><label>TSR In Date</label><input id="f_date_in" type="date"></div>
+      <div class="col"><label>TSR Out Date</label><input id="f_date_out" type="date"></div>
+      <div class="col" style="flex-basis:100%"><label>Remarks</label><textarea id="f_remarks" rows="2"></textarea></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="btn b-success" onclick="addRecord()">Add Record</button></div>
+    <h4>Recent Entries</h4>
+    <div id="recentTable"></div>
+  </section>
+
+  <section id="page-view" class="card hidden">
+    <h3>View/Search Records</h3>
+    <div class="mode-group" style="margin-bottom:8px">
+      <button id="mode-pending" class="btn" onclick="setSearchMode('pending')">Pending TSR</button>
+      <button id="mode-all" class="btn b-primary" onclick="setSearchMode('all')">All Records</button>
+      <button id="mode-project" class="btn" onclick="setSearchMode('project')">By Project</button>
+      <button id="mode-agency" class="btn" onclick="setSearchMode('agency')">By Agency</button>
+      <button id="mode-status" class="btn" onclick="setSearchMode('status')">By Status</button>
+    </div>
+    <div class="row">
+      <div class="col"><label>Search Text</label><input id="searchTerm" oninput="runSearch()"></div>
+    </div>
+    <div id="searchTable"></div>
+  </section>
+
+  <section id="page-edit" class="card hidden">
+    <h3>Edit Records</h3>
+    <div class="mode-group" style="margin-bottom:8px">
+      <button id="emode-pending" class="btn" onclick="setEditSearchMode('pending')">Pending TSR</button>
+      <button id="emode-all" class="btn b-primary" onclick="setEditSearchMode('all')">All Records</button>
+      <button id="emode-project" class="btn" onclick="setEditSearchMode('project')">By Project</button>
+      <button id="emode-agency" class="btn" onclick="setEditSearchMode('agency')">By Agency</button>
+      <button id="emode-status" class="btn" onclick="setEditSearchMode('status')">By Status</button>
+    </div>
+    <div class="row"><div class="col"><label>Search Text</label><input id="editSearchTerm" oninput="runEditSearch()"></div></div>
+    <div id="editTable"></div>
+  </section>
+
+  <section id="page-reports" class="card hidden">
+    <h3>Reports</h3>
+    <div class="row">
+      <div class="col" style="flex:1 1 100%"><label>Agency</label><div id="r_agency_pills"></div></div>
+      <div class="col" style="flex:1 1 100%"><label>Status</label><div id="r_status_pills"></div></div>
+      <div class="col" style="flex:1 1 100%"><label>Project (multi-select)</label><div style="display:flex;flex-wrap:wrap;margin-top:4px" id="r_project_pills"></div></div>
+      <div class="col"><label>From</label><input type="date" id="r_from" onchange="rptLiveCount()"></div>
+      <div class="col"><label>To</label><input type="date" id="r_to" onchange="rptLiveCount()"></div>
+    </div>
+    <p class="tiny muted" id="activeFilters"></p>
+    <div class="row">
+      <span class="chip">Matching Records: <b id="rptLiveCount">0</b></span>
+      <button class="btn b-primary" onclick="rptPreview()">Preview</button>
+      <button class="btn" onclick="rptGeneratePDF()">Export PDF</button>
+      <button class="btn" onclick="rptExportCSV()">Export CSV</button>
+    </div>
+    <div id="reportPreview" class="project-block"></div>
+  </section>
+
+  <section id="page-admin" class="card hidden">
+    <h3>User Administration</h3>
+    <div id="adminOnlyArea" class="hidden">
+      <div class="card" style="margin:0 0 12px 0">
+        <h4>Users</h4>
+        <div class="row">
+          <div class="col"><label>Username</label><input id="newUser"></div>
+          <div class="col"><label>Password</label><input id="newPass" type="password"></div>
+          <div class="col"><label>Role</label><select id="newRole"><option value="user">user</option><option value="admin">admin</option></select></div>
+        </div>
+        <div class="row" style="margin-top:10px"><button class="btn b-success" onclick="addUser()">Add User</button></div>
+      </div>
+      <div id="userList"></div>
+    </div>
+
+    <div class="card" id="admin-online-section" style="margin:0 0 12px 0;display:none">
+      <h4>Currently Logged-In Users</h4>
+      <div id="admin-online-list"><div class="es"><div class="ei">👤</div>Loading...</div></div>
+    </div>
+
+    <div class="card" style="margin:0">
+      <h4>Change My Password</h4>
+      <div class="row">
+        <div class="col"><label>Current Password</label><input type="password" id="oldPw"></div>
+        <div class="col"><label>New Password</label><input type="password" id="newPw"></div>
+      </div>
+      <div class="row" style="margin-top:10px"><button class="btn b-warning" onclick="changeMyPassword()">Change Password</button></div>
+    </div>
+  </section>
+</section>
+
+<script>
+let token = '';
+let currentUser = null;
+let db = [];
+let users = [];
+let onlineUsers = [];
+let searchMode = 'all';
+let editSearchMode = 'all';
+let sse = null;
+
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.style.display = 'none', 2800);
+}
+
+async function api(path, options = {}){
+  const headers = Object.assign({'Content-Type':'application/json'}, options.headers || {});
+  if(token) headers.Authorization = 'Bearer ' + token;
+  const res = await fetch(path, Object.assign({}, options, {headers}));
+  let data = null;
+  try { data = await res.json(); } catch { data = null; }
+  if(!res.ok){
+    const err = new Error((data && data.error) || res.statusText || 'Request failed');
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
+function escapeHtml(v){
+  return String(v ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+function recordPending(r){
+  return !r.date_out || String(r.date_out).trim() === '';
+}
+
+function buildTable(records, targetId, opts = {}){
+  const canEdit = !!opts.canEdit;
+  const rows = records.map((r, idx) => {
+    const pendingClass = recordPending(r) ? ' class="pending"' : '';
+    return `<tr${pendingClass}>
+      <td>${idx+1}</td><td>${escapeHtml(r.project)}</td><td>${escapeHtml(r.item_name)}</td>
+      <td>${escapeHtml(r.agency)}</td><td>${escapeHtml(r.item_category)}</td><td>${escapeHtml(r.status)}</td>
+      <td>${escapeHtml(r.qty)}</td><td>${escapeHtml(r.qty_accepted)}</td>
+      <td>${escapeHtml(r.date_in)}</td><td>${escapeHtml(r.date_out)}</td><td>${escapeHtml(r.remarks)}</td>
+      ${canEdit ? `<td><button class="btn" onclick="editRecord(${r.id})">Edit</button> <button class="btn b-danger" onclick="deleteRecord(${r.id})">Delete</button></td>` : ''}
+    </tr>`;
+  }).join('');
+  const noDataColspan = canEdit ? 12 : 11;
+  document.getElementById(targetId).innerHTML = `<table><thead><tr>
+    <th>S.N.</th><th>Project</th><th>Item Name</th><th>Agency</th><th>Category</th><th>Status</th>
+    <th>Qty</th><th>Qty Accepted</th><th>TSR In Date</th><th>TSR Out Date</th><th>Remarks</th>${canEdit?'<th>Actions</th>':''}
+  </tr></thead><tbody>${rows || `<tr><td colspan="${noDataColspan}">No records</td></tr>`}</tbody></table>`;
+}
+
+async function doLogin(){
+  const errEl = document.getElementById('login-err');
+  errEl.textContent = '';
+  try{
+    const data = await api('/api/login', {method:'POST', body: JSON.stringify({
+      username: document.getElementById('login-user').value,
+      password: document.getElementById('login-pass').value
+    })});
+    token = data.token;
+    document.cookie = 'tsr_token=' + encodeURIComponent(token) + '; path=/; SameSite=Lax';
+    currentUser = data.user;
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('welcome').textContent = `Logged in as ${currentUser.username} (${currentUser.role})`;
+    await initApp();
+  }catch(err){
+    errEl.textContent = (err.data && err.data.error) || err.message || 'Login failed';
+  }
+}
+
+async function logout(showMsg = false){
+  try{ if(token) await api('/api/logout', {method:'POST'}); }catch{}
+  document.cookie = 'tsr_token=; path=/; Max-Age=0; SameSite=Lax';
+  token = ''; currentUser = null; db = []; users = []; onlineUsers = [];
+  if(sse){ sse.close(); sse = null; }
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  if(showMsg) toast('You have been logged out by an administrator.');
+}
+
+function _handleSSE(event, data){
+  if(event === 'db_changed' || event === 'record_created' || event === 'record_updated' || event === 'record_deleted'){
+    loadDB();
+  }
+  if(event === 'users_changed'){ renderAdminPage(); }
+  if(event === 'online'){
+    onlineUsers = Array.isArray(data.online) ? data.online : [];
+    updateOnlineCount();
+    renderUserList();
+    renderOnlineUsersAdmin();
+  }
+  if(event === 'force_logout'){
+    if(currentUser && data.userId === currentUser.id){
+      logout(true);
+    }
+  }
+}
+
+function connectSSE(){
+  if(!token) return;
+  if(sse) sse.close();
+  sse = new EventSource('/api/events', { withCredentials: false });
+  sse.onmessage = () => {};
+  ['db_changed','record_created','record_updated','record_deleted','users_changed','online','force_logout'].forEach(evt => {
+    sse.addEventListener(evt, e => {
+      let data = {};
+      try{ data = JSON.parse(e.data || '{}'); }catch{}
+      _handleSSE(evt, data);
+    });
+  });
+}
+
+async function initApp(){
+  await loadDB();
+  await refreshOnlineUsers();
+  await renderAdminPage();
+  renderRecent();
+  runSearch();
+  runEditSearch();
+  connectSSE();
+}
+
+async function loadDB(){
+  db = await api('/api/db');
+  renderRecent();
+  runSearch();
+  runEditSearch();
+  rptPopulateDropdowns();
+  rptLiveCount();
+}
+
+function val(id){ return document.getElementById(id).value.trim(); }
+
+async function addRecord(){
+  const rec = {
+    project: val('f_project'),
+    item_name: val('f_item_name'),
+    agency: val('f_agency'),
+    item_category: val('f_item_category'),
+    status: val('f_status'),
+    qty: val('f_qty'),
+    qty_accepted: val('f_qty_accepted'),
+    date_in: val('f_date_in'),
+    date_out: val('f_date_out'),
+    remarks: val('f_remarks')
+  };
+  await api('/api/records', {method:'POST', body:JSON.stringify(rec)});
+  ['f_project','f_item_name','f_agency','f_item_category','f_status','f_qty','f_qty_accepted','f_date_in','f_date_out','f_remarks'].forEach(id => document.getElementById(id).value='');
+  await loadDB();
+  toast('Record added');
+}
+
+function renderRecent(){
+  buildTable(db.slice(0, 20), 'recentTable');
+}
+
+function setSearchMode(mode){
+  searchMode = mode;
+  ['all','pending','project','agency','status'].forEach(m => document.getElementById('mode-'+m).classList.toggle('b-primary', m===mode));
+  runSearch();
+}
+
+function setEditSearchMode(mode){
+  editSearchMode = mode;
+  ['all','pending','project','agency','status'].forEach(m => document.getElementById('emode-'+m).classList.toggle('b-primary', m===mode));
+  runEditSearch();
+}
+
+function runSearch(){
+  const t = document.getElementById('searchTerm').value.trim().toLowerCase();
+  let res = db.slice();
+  if(searchMode === 'pending'){
+    res = db.filter(r => !r.date_out || String(r.date_out).trim() === '');
+  } else if(searchMode !== 'all' && t){
+    res = db.filter(r => String(r[searchMode] || '').toLowerCase().includes(t));
+  } else if(t){
+    res = db.filter(r => Object.values(r).some(v => String(v ?? '').toLowerCase().includes(t)));
+  }
+  buildTable(res, 'searchTable');
+}
+
+function runEditSearch(){
+  const t = document.getElementById('editSearchTerm').value.trim().toLowerCase();
+  let res = db.slice();
+  if(editSearchMode === 'pending'){
+    res = db.filter(r => !r.date_out || String(r.date_out).trim() === '');
+  } else if(editSearchMode !== 'all' && t){
+    res = db.filter(r => String(r[editSearchMode] || '').toLowerCase().includes(t));
+  } else if(t){
+    res = db.filter(r => Object.values(r).some(v => String(v ?? '').toLowerCase().includes(t)));
+  }
+  buildTable(res, 'editTable', {canEdit:true});
+}
+
+async function editRecord(id){
+  const r = db.find(x => x.id === id);
+  if(!r) return;
+  const item_name = prompt('Item Name', r.item_name || '');
+  if(item_name === null) return;
+  const project = prompt('Project', r.project || '');
+  if(project === null) return;
+  const agency = prompt('Agency', r.agency || '');
+  if(agency === null) return;
+  const item_category = prompt('Category', r.item_category || '');
+  if(item_category === null) return;
+  const status = prompt('Status', r.status || '');
+  if(status === null) return;
+  const qty = prompt('Qty', r.qty || '');
+  if(qty === null) return;
+  const qty_accepted = prompt('Qty Accepted', r.qty_accepted || '');
+  if(qty_accepted === null) return;
+  const date_in = prompt('TSR In Date (YYYY-MM-DD)', r.date_in || '');
+  if(date_in === null) return;
+  const date_out = prompt('TSR Out Date (YYYY-MM-DD)', r.date_out || '');
+  if(date_out === null) return;
+  const remarks = prompt('Remarks', r.remarks || '');
+  if(remarks === null) return;
+  await api(`/api/records/${id}`, {method:'PUT', body: JSON.stringify({item_name, project, agency, item_category, status, qty, qty_accepted, date_in, date_out, remarks})});
+  await loadDB();
+  toast('Record updated');
+}
+
+async function deleteRecord(id){
+  if(!confirm('Delete this record?')) return;
+  await api(`/api/records/${id}`, {method:'DELETE'});
+  await loadDB();
+  toast('Record deleted');
+}
+
+function makePills(values, containerId, prefix, onChange){
+  const host = document.getElementById(containerId);
+  host.innerHTML = values.map(v => `<label class="filter-pill"><input type="checkbox" id="${prefix}_${encodeURIComponent(v)}" data-v="${escapeHtml(v)}" onchange="${onChange}"> ${escapeHtml(v)}</label>`).join('') || '<span class="muted tiny">No values</span>';
+}
+
+function checkedValues(containerId){
+  return [...document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)].map(x => x.dataset.v || '');
+}
+
+function rptPopulateDropdowns(){
+  const ag = [...new Set(db.map(r => String(r.agency || '').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const st = [...new Set(db.map(r => String(r.status || '').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  makePills(ag, 'r_agency_pills', 'ra', 'rptLiveCount()');
+  makePills(st, 'r_status_pills', 'rs', 'rptLiveCount()');
+  const projects=[...new Set(db.map(r=>r.project).filter(Boolean))].sort();
+  const pp=document.getElementById('r_project_pills');
+  if(pp) pp.innerHTML=projects.map(p=>'<label class="filter-pill" style="margin-right:6px;margin-bottom:4px"><input type="checkbox" value="'+escapeHtml(p)+'" onchange="rptLiveCount()"> '+escapeHtml(p)+'</label>').join('')||(('<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">No projects in database</span>'));
+  updateActiveFiltersLabel();
+}
+
+function rptApplyFilters(){
+  const ag = checkedValues('r_agency_pills');
+  const st = checkedValues('r_status_pills');
+  const projectsSelected=[...document.querySelectorAll('#r_project_pills input:checked')].map(c=>c.value);
+  const from = document.getElementById('r_from').value;
+  const to = document.getElementById('r_to').value;
+  return db.filter(r => {
+    const agencyOk = ag.length ? ag.includes(String(r.agency || '').trim()) : true;
+    const statusOk = st.length ? st.includes(String(r.status || '').trim()) : true;
+    const projectOk = projectsSelected.length ? projectsSelected.includes(String(r.project || '').trim()) : true;
+    const inDate = String(r.date_in || '');
+    const fromOk = from ? inDate >= from : true;
+    const toOk = to ? inDate <= to : true;
+    return agencyOk && statusOk && projectOk && fromOk && toOk;
+  });
+}
+
+function updateActiveFiltersLabel(){
+  const ag = checkedValues('r_agency_pills');
+  const st = checkedValues('r_status_pills');
+  const projectsSel=[...document.querySelectorAll('#r_project_pills input:checked')].map(c=>c.value);
+  const parts = [];
+  if(ag.length) parts.push(`Agency: ${ag.join(', ')}`);
+  if(st.length) parts.push(`Status: ${st.join(', ')}`);
+  if(projectsSel.length) parts.push('Project: '+projectsSel.join(', '));
+  const from = document.getElementById('r_from').value;
+  const to = document.getElementById('r_to').value;
+  if(from || to) parts.push(`Date: ${from || '...'} to ${to || '...'}`);
+  document.getElementById('activeFilters').textContent = parts.length ? `Active Filters → ${parts.join(' | ')}` : 'Active Filters → None';
+}
+
+function rptLiveCount(){
+  const res = rptApplyFilters();
+  document.getElementById('rptLiveCount').textContent = String(res.length);
+  updateActiveFiltersLabel();
+}
+
+function daysBetween(dateIn, dateOut){
+  if(!dateIn || !dateOut) return '';
+  const a = new Date(dateIn), b = new Date(dateOut);
+  if(Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return '';
+  return Math.round((b - a) / (1000*60*60*24));
+}
+
+function rptPreview(){
+  const res = rptApplyFilters();
+  const groups = {};
+  res.forEach(r => {
+    const k = String(r.project || 'Unspecified');
+    (groups[k] ||= []).push(r);
+  });
+  const html = Object.keys(groups).sort().map(project => {
+    const items = groups[project];
+    const rows = items.map((r,i)=>`<tr>
+      <td>${i+1}</td><td>${escapeHtml(r.item_name)}</td><td>${escapeHtml(r.qty)}</td><td>${escapeHtml(r.qty_accepted)}</td>
+      <td>${escapeHtml(r.agency)}</td><td>${escapeHtml(r.item_category)}</td><td>${escapeHtml(daysBetween(r.date_in, r.date_out))}</td>
+    </tr>`).join('');
+    return `<div class="project-block"><h4>Project: ${escapeHtml(project)} (${items.length})</h4>
+      <table><colgroup><col style="width:8%"><col style="width:28%"><col style="width:12%"><col style="width:12%"><col style="width:15%"><col style="width:15%"><col style="width:10%"></colgroup><thead><tr><th>S.N.</th><th>Item Name</th><th>Qty</th><th>Qty Accepted</th><th>Agency</th><th>Category</th><th>TSR Completion Days</th></tr></thead>
+      <tbody>${rows}<tr><td colspan="7"><b>Total Items: ${items.length}</b></td></tr></tbody></table></div>`;
+  }).join('');
+  document.getElementById('reportPreview').innerHTML = html || '<p class="muted">No data for selected filters.</p>';
+}
+
+function rptGeneratePDF(){
+  rptPreview();
+  const body = document.getElementById('reportPreview').innerHTML;
+  const w = window.open('', '_blank');
+  w.document.write(`<!doctype html><html><head><title>TSR Report</title><style>body{font-family:Arial;padding:16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:6px}th{background:#f2f2f2}</style></head><body><h2>TSR Report</h2>${body}</body></html>`);
+  w.document.close();
+  w.focus();
+  w.print();
+}
+
+function csvEscape(v){
+  const s = String(v ?? '');
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function rptExportCSV(){
+  const res = rptApplyFilters();
+  const lines = ['Project,S.N.,Item Name,Qty,Qty Accepted,Agency,Category,TSR Completion Days'];
+  const groups = {};
+  res.forEach(r => { const p = String(r.project || 'Unspecified'); (groups[p] ||= []).push(r); });
+  Object.keys(groups).sort().forEach(p => {
+    groups[p].forEach((r, i) => {
+      lines.push([
+        p, i+1, r.item_name, r.qty, r.qty_accepted, r.agency, r.item_category, daysBetween(r.date_in, r.date_out)
+      ].map(csvEscape).join(','));
+    });
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'tsr_report.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function refreshOnlineUsers(){
+  try{ onlineUsers = await api('/api/online'); }catch{ onlineUsers = []; }
+  updateOnlineCount();
+  renderUserList();
+  renderOnlineUsersAdmin();
+}
+
+function updateOnlineCount(){
+  document.getElementById('onlineCount').textContent = String(onlineUsers.length);
+}
+
+function isOnlineUser(user){
+  return onlineUsers.some(o => o.username === user.username);
+}
+
+async function renderAdminPage(){
+  document.getElementById('tab-admin').classList.toggle('hidden', !currentUser);
+  if(!currentUser) return;
+  document.getElementById('adminOnlyArea').classList.toggle('hidden', currentUser.role !== 'admin');
+  await refreshOnlineUsers();
+  if(currentUser.role === 'admin'){
+    const onlineSec = document.getElementById('admin-online-section');
+    if(onlineSec) onlineSec.style.display = 'block';
+    try{ users = await api('/api/users'); }catch{ users = []; }
+    const onlineList = document.getElementById('admin-online-list');
+    if(onlineList){
+      if(!onlineUsers.length) onlineList.innerHTML = '<div class="es"><div class="ei">👤</div>No users currently online.</div>';
+      else onlineList.innerHTML = onlineUsers.map(u => {
+        const fullUser = users.find(x => x.username === u.username);
+        const uid = fullUser ? fullUser.id : 0;
+        return `<div class="card" style="margin:0 0 8px 0"><div class="top"><div><b>${escapeHtml(u.username)}</b> <span class="muted tiny">(${escapeHtml(u.role)} · ONLINE)</span></div>${uid && uid !== currentUser.id ? `<button class="btn b-danger" onclick="forceLogoutUser(${uid})">⏏ Force Logout</button>` : ''}</div></div>`;
+      }).join('');
+    }
+    renderUserList();
+  }else{
+    const os=document.getElementById('admin-online-section');
+    if(os) os.style.display='none';
+  }
+}
+
+function renderUserList(){
+  const el = document.getElementById('userList');
+  if(currentUser?.role !== 'admin'){ el.innerHTML = ''; return; }
+  el.innerHTML = users.map(u => {
+    const online = isOnlineUser(u);
+    return `<div class="card" style="margin:0 0 8px 0"><div class="top"><div><b>${escapeHtml(u.username)}</b> <span class="muted tiny">(${escapeHtml(u.role)})</span> ${online?'<span class="chip tiny">Online</span>':''}</div>
+      <div class="row"><button class="btn" onclick="resetPassword(${u.id})">Reset Password</button>${u.username!=='admin'?`<button class="btn b-danger" onclick="deleteUser(${u.id})">Delete</button>`:''}${online?`<button class="btn b-danger" onclick="forceLogoutUser(${u.id})">⏏ Force Logout</button>`:''}</div></div></div>`;
+  }).join('') || '<p class="muted">No users.</p>';
+}
+
+function renderOnlineUsersAdmin(){
+  const el = document.getElementById('admin-online-list');
+  if(!currentUser){ el.innerHTML=''; return; }
+  if(!el) return;
+  if(!onlineUsers.length){ el.innerHTML = '<div class="es"><div class="ei">👤</div>No users currently online.</div>'; return; }
+  el.innerHTML = onlineUsers.map(u => {
+    const fullUser = users.find(x => x.username === u.username);
+    const uid = fullUser ? fullUser.id : 0;
+    return `<div class="card" style="margin:0 0 8px 0"><div class="top"><div><b>${escapeHtml(u.username)}</b> <span class="muted tiny">(${escapeHtml(u.role)} · ONLINE)</span></div>${currentUser.role==='admin' && uid !== currentUser.id ? `<button class="btn b-danger" onclick="forceLogoutUser(${uid})">⏏ Force Logout</button>`:''}</div></div>`;
+  }).join('');
+}
+
+async function forceLogoutUser(userId){
+  if(currentUser?.role !== 'admin') return;
+  if(!confirm('This will immediately log out this user from all devices.')) return;
+  await api(`/api/users/${userId}/force-logout`, {method:'POST'});
+  await renderAdminPage();
+  toast('User has been logged out');
+}
+
+async function addUser(){
+  await api('/api/users', {method:'POST', body: JSON.stringify({username:val('newUser'), password:val('newPass'), role:document.getElementById('newRole').value})});
+  document.getElementById('newUser').value = '';
+  document.getElementById('newPass').value = '';
+  await renderAdminPage();
+  toast('User added');
+}
+
+async function resetPassword(id){
+  const p = prompt('New password');
+  if(!p) return;
+  await api(`/api/users/${id}/password`, {method:'POST', body: JSON.stringify({password:p})});
+  toast('Password reset');
+}
+
+async function deleteUser(id){
+  if(!confirm('Delete user?')) return;
+  await api(`/api/users/${id}`, {method:'DELETE'});
+  await renderAdminPage();
+  toast('User deleted');
+}
+
+async function changeMyPassword(){
+  await api('/api/change-password', {method:'POST', body: JSON.stringify({oldPassword: val('oldPw'), newPassword: val('newPw')})});
+  document.getElementById('oldPw').value = '';
+  document.getElementById('newPw').value = '';
+  toast('Password changed');
+}
+
+function openTab(tab){
+  ['entry','view','edit','reports','admin'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('page-'+t).classList.toggle('hidden', t!==tab);
+  });
+  if(tab === 'reports'){
+    rptPopulateDropdowns();
+    rptLiveCount();
+  }
+  if(tab === 'admin') renderAdminPage();
+}
+</script>
+</body>
+</html>
