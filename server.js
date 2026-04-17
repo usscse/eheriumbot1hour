@@ -24,7 +24,27 @@ const locks = new Map(); // recordId -> { userId, username, expiresAt }
 const LOCK_TTL_MS = 30 * 60 * 1000;
 
 function hashPassword(password) {
-  return crypto.createHash('sha256').update(String(password || '')).digest('hex');
+  const iterations = 600000;
+  const salt = crypto.randomBytes(16).toString('hex');
+  const derived = crypto.pbkdf2Sync(String(password || ''), salt, iterations, 64, 'sha512').toString('hex');
+  return `pbkdf2$${iterations}$${salt}$${derived}`;
+}
+
+function verifyPassword(storedHash, password) {
+  if (!storedHash) return false;
+  if (!storedHash.startsWith('pbkdf2$')) return false;
+  const parts = storedHash.split('$');
+  if (parts.length !== 4) return false;
+  const iterations = parseInt(parts[1], 10);
+  if (!Number.isFinite(iterations) || iterations <= 0) return false;
+  const salt = parts[2];
+  const expected = parts[3];
+  const actual = crypto.pbkdf2Sync(String(password || ''), salt, iterations, 64, 'sha512').toString('hex');
+  try {
+    return crypto.timingSafeEqual(Buffer.from(actual, 'hex'), Buffer.from(expected, 'hex'));
+  } catch {
+    return false;
+  }
 }
 
 function readJSON(file, fallback) {
@@ -87,7 +107,13 @@ function sendText(res, status, text, contentType = 'text/plain; charset=utf-8') 
 function bearerToken(req) {
   const auth = req.headers.authorization || '';
   if (auth.startsWith('Bearer ')) return auth.slice(7).trim();
-  return req.headers['x-token'] || '';
+  if (req.headers['x-token']) return req.headers['x-token'];
+  const cookie = req.headers.cookie || '';
+  for (const part of cookie.split(';')) {
+    const [k, ...rest] = part.trim().split('=');
+    if (k === 'tsr_token') return decodeURIComponent(rest.join('=') || '');
+  }
+  return '';
 }
 
 function getSession(req) {
@@ -160,12 +186,8 @@ function route(req, res) {
   }
 
   if (req.method === 'GET' && pathname === '/api/events') {
-    const sseToken = url.searchParams.get('token');
-    const user = sseToken ? sessions.get(sseToken) : getSession(req);
-    if (!user) {
-      sendJSON(res, 401, { error: 'Unauthorized' });
-      return;
-    }
+    const user = requireAuth(req, res);
+    if (!user) return;
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -184,10 +206,9 @@ function route(req, res) {
         const password = String(body.password || '');
         const users = readJSON(USERS_FILE, []);
         const found = users.find(u => u.username === username);
-        if (!found || found.passwordHash !== hashPassword(password)) {
+        if (!found || !verifyPassword(found.passwordHash, password)) {
           return sendJSON(res, 401, { error: 'Invalid username or password.' });
         }
-
         for (const s of sessions.values()) {
           if (s.username === username) {
             return sendJSON(res, 409, { error: 'User already logged in on another device. Please logout from the other device first.' });
@@ -429,7 +450,7 @@ function route(req, res) {
         const users = readJSON(USERS_FILE, []);
         const u = users.find(x => x.id === user.id);
         if (!u) return sendJSON(res, 404, { error: 'User not found' });
-        if (u.passwordHash !== hashPassword(oldPassword)) {
+        if (!verifyPassword(u.passwordHash, oldPassword)) {
           return sendJSON(res, 401, { error: 'Current password is incorrect' });
         }
         u.passwordHash = hashPassword(newPassword);
@@ -448,14 +469,7 @@ function route(req, res) {
 
   if (req.method === 'GET' && pathname === '/api/online') {
     if (!requireAuth(req, res)) return;
-    const seen = new Set();
-    const online = [...sessions.values()]
-      .filter(s => {
-        if (seen.has(s.username)) return false;
-        seen.add(s.username);
-        return true;
-      })
-      .map(s => ({ id: s.id, username: s.username, role: s.role }));
+    const online = listOnlineDeduped();
     return sendJSON(res, 200, online);
   }
 

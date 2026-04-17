@@ -211,10 +211,11 @@ function buildTable(records, targetId, opts = {}){
       ${canEdit ? `<td><button class="btn" onclick="editRecord(${r.id})">Edit</button> <button class="btn b-danger" onclick="deleteRecord(${r.id})">Delete</button></td>` : ''}
     </tr>`;
   }).join('');
+  const noDataColspan = canEdit ? 12 : 11;
   document.getElementById(targetId).innerHTML = `<table><thead><tr>
     <th>S.N.</th><th>Project</th><th>Item Name</th><th>Agency</th><th>Category</th><th>Status</th>
     <th>Qty</th><th>Qty Accepted</th><th>TSR In Date</th><th>TSR Out Date</th><th>Remarks</th>${canEdit?'<th>Actions</th>':''}
-  </tr></thead><tbody>${rows || '<tr><td colspan="12">No records</td></tr>'}</tbody></table>`;
+  </tr></thead><tbody>${rows || `<tr><td colspan="${noDataColspan}">No records</td></tr>`}</tbody></table>`;
 }
 
 async function doLogin(){
@@ -226,6 +227,7 @@ async function doLogin(){
       password: document.getElementById('login-pass').value
     })});
     token = data.token;
+    document.cookie = 'tsr_token=' + encodeURIComponent(token) + '; path=/; SameSite=Lax';
     currentUser = data.user;
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
@@ -238,6 +240,7 @@ async function doLogin(){
 
 async function logout(showMsg = false){
   try{ if(token) await api('/api/logout', {method:'POST'}); }catch{}
+  document.cookie = 'tsr_token=; path=/; Max-Age=0; SameSite=Lax';
   token = ''; currentUser = null; db = []; users = []; onlineUsers = [];
   if(sse){ sse.close(); sse = null; }
   document.getElementById('app').classList.add('hidden');
@@ -266,7 +269,7 @@ function _handleSSE(event, data){
 function connectSSE(){
   if(!token) return;
   if(sse) sse.close();
-  sse = new EventSource('/api/events?token=' + encodeURIComponent(token), { withCredentials: false });
+  sse = new EventSource('/api/events', { withCredentials: false });
   sse.onmessage = () => {};
   ['db_changed','record_created','record_updated','record_deleted','users_changed','online','force_logout'].forEach(evt => {
     sse.addEventListener(evt, e => {
@@ -400,7 +403,7 @@ function makePills(values, containerId, prefix, onChange){
 }
 
 function checkedValues(containerId){
-  return [...document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)].map(x => decodeURIComponent(x.id.split('_').slice(1).join('_')));
+  return [...document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)].map(x => x.dataset.v || '');
 }
 
 function rptPopulateDropdowns(){
